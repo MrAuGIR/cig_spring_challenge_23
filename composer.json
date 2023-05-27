@@ -1,0 +1,19 @@
+{
+    "name": "mraugir/codingame-sp2023",
+    "description": "spring challenge 2023",
+    "authors": [
+        {
+            "name": "aurelien",
+            "email": "contact@aureliengirard.fr"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "app\\": "App/",
+            "Tests\\": "Tests/"
+        }
+    },
+    "require": {
+        "phpunit/phpunit": "^9.5"
+    }
+}
