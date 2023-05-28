@@ -1,6 +1,13 @@
 <?php
-// Last compile time: 28/05/23 13:58 
+// Last compile time: 28/05/23 22:08 
 
+
+
+
+interface Action
+{
+    public function toString() : string;
+}
 
 
 
@@ -29,6 +36,11 @@ class Cell
      */
     public $isEnnemyBase;
 
+    /**
+     * @var bool $isEmpty si la ressource est épuisé
+     */
+    public $isEmpty = false;
+
     public function __construct(int $index, int $type, int $resources, int $myAnts, array $neightboors, bool $isFriendBase = false, bool $isEnnemyBase = false)
     {
         $this->index = $index;
@@ -38,6 +50,21 @@ class Cell
         $this->neightboors = $neightboors;
         $this->isFriendBase = $isFriendBase;
         $this->isEnnemyBase = $isEnnemyBase;
+    }
+
+    /**
+     * @param int $value
+     * @return $this
+     */
+    public function updateResource(int $value) : self {
+        $this->prevResource = $this->resources;
+        $this->resources = $value;
+
+        if ($value <= 0 && $this->prevResource > 0) {
+            $this->isEmpty = true;
+        }
+
+        return $this;
     }
 }
 
@@ -53,6 +80,83 @@ class Graph
 
 
 
+class Line implements Action
+{
+    const CODE = "LINE";
+
+    /**
+     * @var int $origine index cellule origine
+     */
+    public $origine;
+
+    /**
+     * @var int $destination index cellule destination
+     */
+    public $destination;
+
+    public $weight;
+
+    /**
+     * @return string
+     */
+    public function toString(): string
+    {
+        return self::CODE." $this->origine $this->destination $this->weight;";
+    }
+}
+
+
+
+class ListAction
+{
+    /**
+     * @var Action[] $actions
+     */
+    public $actions;
+
+    public function __construct()
+    {
+        $this->actions = [];
+    }
+
+    /**
+     * @param Action $action
+     * @return $this
+     */
+    public function add(Action $action) : self {
+        $this->actions[$action->destination] = $action;
+        return $this;
+    }
+
+    /**
+     * @param int $index
+     * @return self
+     */
+    public function remove(int $index) : self {
+
+        if (isset($this->actions[$index])) {
+            unset($this->actions[$index]);
+        }
+        return $this;
+    }
+
+    /**
+     * @return string
+     */
+    public function outPut() : string {
+
+        $return = '';
+        foreach ($this->actions as $key => $action) {
+            $return .= $action->toString();
+        }
+        return $return."\n";
+    }
+}
+
+
+
+
+
 
 
 
@@ -60,15 +164,19 @@ class Graph
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
  **/
-/** @var Cell[] */
- $listCells = [];
+/** @var Cell[] $listCells */
+$listCells = [];
 
- $actions = "";
+$actions = "";
 
  /**
   * @var null|Cell $myBase
   */
  $myBase = null;
+
+$listDestination = [];
+
+$listActions = new ListAction();
 
 // $numberOfCells: amount of hexagonal cells in this map
 fscanf(STDIN, "%d", $numberOfCells);
@@ -96,7 +204,7 @@ for ($i = 0; $i < $numberOfBases; $i++)
     $listCells[$oppBaseIndex]->isEnnemyBase = true;
 }
 
-parcoure($myBase,$actions,$listCells,$myBase->index);
+parcoure($myBase,$listActions,$listCells,$myBase->index);
 
 // game loop
 while (TRUE)
@@ -109,20 +217,30 @@ while (TRUE)
         fscanf(STDIN, "%d %d %d", $resources, $myAnts, $oppAnts);
         $cell = $listCells[$i];
         $cell->myAnts = $myAnts;
-        $cell->resources = $resources;
+        $cell->updateResource($resources);
         $cell->oppAnts = $oppAnts;
+
+        if ($cell->isEmpty) {
+            $listActions->remove($cell->index);
+        }
+
     }
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
    
-    echo($actions."\n");
+    echo($listActions->outPut());
 }
 
-
-function parcoure(Cell $cell, string &$actions, array $listCells,$originIndex) {
-
+/**
+ * @param Cell $cell
+ * @param ListAction $listAction
+ * @param array $listCells
+ * @param $originIndex
+ * @return void
+ */
+function parcoure(Cell $cell, ListAction $listAction, array $listCells,$originIndex) {
 
     foreach ($cell->neightboors as $key => $neighIndex) {
         if ($neighIndex <= 0 ) {
@@ -136,23 +254,30 @@ function parcoure(Cell $cell, string &$actions, array $listCells,$originIndex) {
         }
 
         if ($neigh->resources > 0) {
-            $actions .= "LINE $originIndex $neigh->index 1;";
+            $weight = ($neigh->type == 1) ? 1 : 2;
+
+            $action = new Line();
+            $action->origine = $originIndex;
+            $action->destination = $neigh->index;
+            $action->weight = $weight;
+
+            $listAction->add($action);
+
+           // $actions .= "LINE $originIndex $neigh->index $weight;";
         }
 
         $neigh->color = "GRIS";
 
         if (!empty($neigh->neightboors)) {
-            parcoure($neigh,$actions,$listCells,$originIndex);
+            parcoure($neigh,$listAction,$listCells,$originIndex);
         }
     }
 
 }
 
 /**
- * @param string|array|int|object
+ * @param string|array|int|object $data
  */
 function displayLog($data) : void {
     echo error_log(var_export($data,true));
 }
-
-?>

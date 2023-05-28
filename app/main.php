@@ -4,20 +4,26 @@ namespace App;
 
 use App\Model\Cell;
 use App\Model\Graph;
+use App\Model\Line;
+use App\Model\ListAction;
 
 /**
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
  **/
-/** @var Cell[] */
- $listCells = [];
+/** @var Cell[] $listCells */
+$listCells = [];
 
- $actions = "";
+$actions = "";
 
  /**
   * @var null|Cell $myBase
   */
  $myBase = null;
+
+$listDestination = [];
+
+$listActions = new ListAction();
 
 // $numberOfCells: amount of hexagonal cells in this map
 fscanf(STDIN, "%d", $numberOfCells);
@@ -45,7 +51,7 @@ for ($i = 0; $i < $numberOfBases; $i++)
     $listCells[$oppBaseIndex]->isEnnemyBase = true;
 }
 
-parcoure($myBase,$actions,$listCells,$myBase->index);
+parcoure($myBase,$listActions,$listCells,$myBase->index);
 
 // game loop
 while (TRUE)
@@ -58,20 +64,30 @@ while (TRUE)
         fscanf(STDIN, "%d %d %d", $resources, $myAnts, $oppAnts);
         $cell = $listCells[$i];
         $cell->myAnts = $myAnts;
-        $cell->resources = $resources;
+        $cell->updateResource($resources);
         $cell->oppAnts = $oppAnts;
+
+        if ($cell->isEmpty) {
+            $listActions->remove($cell->index);
+        }
+
     }
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
    
-    echo($actions."\n");
+    echo($listActions->outPut());
 }
 
-
-function parcoure(Cell $cell, string &$actions, array $listCells,$originIndex) {
-
+/**
+ * @param Cell $cell
+ * @param ListAction $listAction
+ * @param array $listCells
+ * @param $originIndex
+ * @return void
+ */
+function parcoure(Cell $cell, ListAction $listAction, array $listCells,$originIndex) {
 
     foreach ($cell->neightboors as $key => $neighIndex) {
         if ($neighIndex <= 0 ) {
@@ -85,23 +101,30 @@ function parcoure(Cell $cell, string &$actions, array $listCells,$originIndex) {
         }
 
         if ($neigh->resources > 0) {
-            $actions .= "LINE $originIndex $neigh->index 1;";
+            $weight = ($neigh->type == 1) ? 1 : 2;
+
+            $action = new Line();
+            $action->origine = $originIndex;
+            $action->destination = $neigh->index;
+            $action->weight = $weight;
+
+            $listAction->add($action);
+
+           // $actions .= "LINE $originIndex $neigh->index $weight;";
         }
 
         $neigh->color = "GRIS";
 
         if (!empty($neigh->neightboors)) {
-            parcoure($neigh,$actions,$listCells,$originIndex);
+            parcoure($neigh,$listAction,$listCells,$originIndex);
         }
     }
 
 }
 
 /**
- * @param string|array|int|object
+ * @param string|array|int|object $data
  */
 function displayLog($data) : void {
     echo error_log(var_export($data,true));
 }
-
-?>

@@ -27,6 +27,11 @@ class Cell
      */
     public $isEnnemyBase;
 
+    /**
+     * @var bool $isEmpty si la ressource est épuisé
+     */
+    public $isEmpty = false;
+
     public function __construct(int $index, int $type, int $resources, int $myAnts, array $neightboors, bool $isFriendBase = false, bool $isEnnemyBase = false)
     {
         $this->index = $index;
@@ -36,5 +41,20 @@ class Cell
         $this->neightboors = $neightboors;
         $this->isFriendBase = $isFriendBase;
         $this->isEnnemyBase = $isEnnemyBase;
+    }
+
+    /**
+     * @param int $value
+     * @return $this
+     */
+    public function updateResource(int $value) : self {
+        $this->prevResource = $this->resources;
+        $this->resources = $value;
+
+        if ($value <= 0 && $this->prevResource > 0) {
+            $this->isEmpty = true;
+        }
+
+        return $this;
     }
 }
