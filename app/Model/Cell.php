@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Model\Cell;
+namespace App\Model;
 
 class Cell 
 {
@@ -11,6 +11,9 @@ class Cell
     public  $type; // 0 aucune resource, 1 , 2 contient des cristaux
     public  $resources;
     public  $myAnts;
+    public  $oppAnts;
+    public  $color = 'WHITE'; // Blanc non visité, gris visité une seule fois, noir visité
+    public  $prevResource;
     /**
      * @var array
      */

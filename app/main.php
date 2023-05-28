@@ -3,6 +3,7 @@
 namespace App;
 
 use App\Model\Cell;
+use App\Model\Graph;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -10,6 +11,13 @@ use App\Model\Cell;
  **/
 /** @var Cell[] */
  $listCells = [];
+
+ $actions = "";
+
+ /**
+  * @var null|Cell $myBase
+  */
+ $myBase = null;
 
 // $numberOfCells: amount of hexagonal cells in this map
 fscanf(STDIN, "%d", $numberOfCells);
@@ -27,14 +35,17 @@ $inputs = explode(" ", fgets(STDIN));
 for ($i = 0; $i < $numberOfBases; $i++)
 {
     $myBaseIndex = intval($inputs[$i]);
-    $listCells[$myBaseIndex]->isFriendBase = true;
+    $myBase = $listCells[$myBaseIndex];
+    $myBase->isFriendBase = true;
 }
 $inputs = explode(" ", fgets(STDIN));
 for ($i = 0; $i < $numberOfBases; $i++)
 {
     $oppBaseIndex = intval($inputs[$i]);
-    $listCells[$myBaseIndex]->isEnnemyBase = true;
+    $listCells[$oppBaseIndex]->isEnnemyBase = true;
 }
+
+parcoure($myBase,$actions,$listCells,$myBase->index);
 
 // game loop
 while (TRUE)
@@ -45,15 +56,52 @@ while (TRUE)
         // $myAnts: the amount of your ants on this cell
         // $oppAnts: the amount of opponent ants on this cell
         fscanf(STDIN, "%d %d %d", $resources, $myAnts, $oppAnts);
-        $listCells[$i]->myAnts = $myAnts;
-        $listCells[$i]->resources = $resources;
+        $cell = $listCells[$i];
+        $cell->myAnts = $myAnts;
+        $cell->resources = $resources;
+        $cell->oppAnts = $oppAnts;
     }
-
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
-
-
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
-    echo("WAIT\n");
+    
+   
+    echo($actions."\n");
 }
+
+
+function parcoure(Cell $cell, string &$actions, array $listCells,$originIndex) {
+
+
+    foreach ($cell->neightboors as $key => $neighIndex) {
+        if ($neighIndex <= 0 ) {
+            continue;
+        }
+
+        $neigh = $listCells[$neighIndex];
+
+        if ($neigh->color !== "WHITE") {
+            continue;
+        }
+
+        if ($neigh->resources > 0) {
+            $actions .= "LINE $originIndex $neigh->index 1;";
+        }
+
+        $neigh->color = "GRIS";
+
+        if (!empty($neigh->neightboors)) {
+            parcoure($neigh,$actions,$listCells,$originIndex);
+        }
+    }
+
+}
+
+/**
+ * @param string|array|int|object
+ */
+function displayLog($data) : void {
+    echo error_log(var_export($data,true));
+}
+
 ?>
