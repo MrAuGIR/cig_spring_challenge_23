@@ -2,10 +2,8 @@
 
 namespace App;
 
+use App\Graph\Graph;
 use App\Model\Cell;
-use App\Model\Graph;
-use App\Model\Line;
-use App\Model\ListAction;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -14,16 +12,11 @@ use App\Model\ListAction;
 /** @var Cell[] $listCells */
 $listCells = [];
 
-$actions = "";
 
  /**
   * @var null|Cell $myBase
   */
  $myBase = null;
-
-$listDestination = [];
-
-$listActions = new ListAction();
 
 // $numberOfCells: amount of hexagonal cells in this map
 fscanf(STDIN, "%d", $numberOfCells);
@@ -50,8 +43,13 @@ for ($i = 0; $i < $numberOfBases; $i++)
     $oppBaseIndex = intval($inputs[$i]);
     $listCells[$oppBaseIndex]->isEnnemyBase = true;
 }
+/**
+ * Nouveau graph
+ */
+$graph = new Graph($myBase);
+$graph->setStackCells($listCells);
+$graph->parcoursEnLargeur($myBase);
 
-parcoure($myBase,$listActions,$listCells,$myBase->index);
 
 // game loop
 while (TRUE)
@@ -68,7 +66,7 @@ while (TRUE)
         $cell->oppAnts = $oppAnts;
 
         if ($cell->isEmpty) {
-            $listActions->remove($cell->index);
+            $graph->listAction->remove($cell->index);
         }
 
     }
@@ -77,49 +75,7 @@ while (TRUE)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
    
-    echo($listActions->outPut());
-}
-
-/**
- * @param Cell $cell
- * @param ListAction $listAction
- * @param array $listCells
- * @param $originIndex
- * @return void
- */
-function parcoure(Cell $cell, ListAction $listAction, array $listCells,$originIndex) {
-
-    foreach ($cell->neightboors as $key => $neighIndex) {
-        if ($neighIndex <= 0 ) {
-            continue;
-        }
-
-        $neigh = $listCells[$neighIndex];
-
-        if ($neigh->color !== "WHITE") {
-            continue;
-        }
-
-        if ($neigh->resources > 0) {
-            $weight = ($neigh->type == 1) ? 1 : 2;
-
-            $action = new Line();
-            $action->origine = $originIndex;
-            $action->destination = $neigh->index;
-            $action->weight = $weight;
-
-            $listAction->add($action);
-
-           // $actions .= "LINE $originIndex $neigh->index $weight;";
-        }
-
-        $neigh->color = "GRIS";
-
-        if (!empty($neigh->neightboors)) {
-            parcoure($neigh,$listAction,$listCells,$originIndex);
-        }
-    }
-
+    echo($graph->listAction->outPut());
 }
 
 /**

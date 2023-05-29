@@ -46,4 +46,14 @@ class ListAction
         }
         return $return."\n";
     }
+
+    /**
+     * @return $this
+     */
+    public function sortByDistance() : self{
+        usort($this->actions, function ($a,$b){
+            return $a->distance > $b->distance;
+        });
+        return $this;
+    }
 }

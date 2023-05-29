@@ -1,6 +1,116 @@
 <?php
-// Last compile time: 28/05/23 22:08 
+// Last compile time: 29/05/23 20:29 
 
+
+
+
+
+
+
+
+class Graph
+{
+    /**
+     * @var Cell[] $cells tableau de cellule
+     */
+    public $cells;
+
+    /**
+     * @var Cell $cell
+     */
+    public $racine;
+
+    /**
+     * @var ListAction $listAction
+     */
+    public $listAction;
+
+    /**
+     * @param Cell $racine
+     */
+    public function __construct(Cell $racine)
+    {
+        $this->racine = $racine;
+        $this->listAction = new ListAction();
+    }
+
+    /**
+     * @return Cell
+     */
+    public function getRacine() : Cell {
+        return $this->racine;
+    }
+
+    /**
+     * @return ListAction
+     */
+    public function getListAction() : ListAction {
+        return $this->listAction;
+    }
+
+    /**
+     * @return Cell[]
+     */
+    public function getStackCells() : array {
+        return $this->cells;
+    }
+
+    /**
+     * @param array $cells
+     * @return $this
+     */
+    public function setStackCells(array $cells) : self {
+        $this->cells = $cells;
+        return $this;
+    }
+
+    /**
+     * @param Cell $curentCell
+     * @return void
+     */
+    public function parcoursEnLargeur(Cell $curentCell)
+    {
+        $queue = new \SplQueue();
+
+        $queue->enqueue($curentCell);
+
+        $curentCell->color = 'GREY';
+
+        while (!$queue->isEmpty()) {
+            /** @var Cell $cell */
+            $cell = $queue->dequeue();
+
+            if ($cell->resources > 0) {
+                $weight = ($cell->type == 1) ? 1 : 2;
+
+                $action = new Line();
+                $action->origine = $curentCell->index;
+                $action->destination = $cell->index;
+                $action->weight = $weight;
+                $action->distance = 1;
+
+                $this->listAction->add($action);
+            }
+
+            foreach ($cell->getIndexNeighbors() as $indexNeighbor) {
+
+                if ($indexNeighbor <= 0 ) {
+                    continue;
+                }
+
+                if (empty($neight = $this->cells[$indexNeighbor] ?? [])) {
+                    continue;
+                }
+
+                if ($neight->color === 'WHITE') {
+                    $queue->enqueue($neight);
+
+                    $neight->color = 'GREY';
+                }
+            }
+        }
+    }
+}
 
 
 
@@ -66,16 +176,13 @@ class Cell
 
         return $this;
     }
-}
 
-
-
-class Graph 
-{
     /**
-     * @var array $node tableau de cellule 
+     * @return int[]
      */
-    public $node;
+    public function getIndexNeighbors() : array {
+        return $this->neightboors;
+    }
 }
 
 
@@ -95,6 +202,11 @@ class Line implements Action
     public $destination;
 
     public $weight;
+
+    /**
+     * @var int $distance distance entre la cellule de dest et le point d'origine
+     */
+    public $distance;
 
     /**
      * @return string
@@ -151,6 +263,16 @@ class ListAction
         }
         return $return."\n";
     }
+
+    /**
+     * @return $this
+     */
+    public function sortByDistance() : self{
+        usort($this->actions, function ($a,$b){
+            return $a->distance > $b->distance;
+        });
+        return $this;
+    }
 }
 
 
@@ -203,8 +325,15 @@ for ($i = 0; $i < $numberOfBases; $i++)
     $oppBaseIndex = intval($inputs[$i]);
     $listCells[$oppBaseIndex]->isEnnemyBase = true;
 }
+/**
+ * Nouveau graph
+ */
+$graph = new Graph($myBase);
+$graph->setStackCells($listCells);
+$graph->parcoursEnLargeur($myBase);
 
-parcoure($myBase,$listActions,$listCells,$myBase->index);
+//parcoure($myBase,$listActions,$listCells,$myBase->index);
+//$listActions->sortByDistance();
 
 // game loop
 while (TRUE)
@@ -221,7 +350,7 @@ while (TRUE)
         $cell->oppAnts = $oppAnts;
 
         if ($cell->isEmpty) {
-            $listActions->remove($cell->index);
+            $graph->listAction->remove($cell->index);
         }
 
     }
@@ -230,7 +359,7 @@ while (TRUE)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
    
-    echo($listActions->outPut());
+    echo($graph->listAction->outPut());
 }
 
 /**
@@ -238,10 +367,11 @@ while (TRUE)
  * @param ListAction $listAction
  * @param array $listCells
  * @param $originIndex
+ * @param int $distance
  * @return void
  */
-function parcoure(Cell $cell, ListAction $listAction, array $listCells,$originIndex) {
-
+function parcoure(Cell $cell, ListAction $listAction, array $listCells,$originIndex, $distance = 0) {
+    $distance += 1;
     foreach ($cell->neightboors as $key => $neighIndex) {
         if ($neighIndex <= 0 ) {
             continue;
@@ -260,6 +390,7 @@ function parcoure(Cell $cell, ListAction $listAction, array $listCells,$originIn
             $action->origine = $originIndex;
             $action->destination = $neigh->index;
             $action->weight = $weight;
+            $action->distance = 1;
 
             $listAction->add($action);
 
@@ -269,7 +400,7 @@ function parcoure(Cell $cell, ListAction $listAction, array $listCells,$originIn
         $neigh->color = "GRIS";
 
         if (!empty($neigh->neightboors)) {
-            parcoure($neigh,$listAction,$listCells,$originIndex);
+            parcoure($neigh,$listAction,$listCells,$originIndex,$distance);
         }
     }
 

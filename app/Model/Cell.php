@@ -57,4 +57,11 @@ class Cell
 
         return $this;
     }
+
+    /**
+     * @return int[]
+     */
+    public function getIndexNeighbors() : array {
+        return $this->neightboors;
+    }
 }
