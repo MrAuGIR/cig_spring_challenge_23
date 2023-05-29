@@ -66,7 +66,7 @@ class Graph
      * @param Cell $curentCell
      * @return void
      */
-    public function parcoursEnLargeur(Cell $curentCell)
+    public function parcoursEnLargeur(Cell $curentCell) : void
     {
         $queue = new \SplQueue();
 
@@ -79,13 +79,14 @@ class Graph
             $cell = $queue->dequeue();
 
             if ($cell->resources > 0) {
-                $weight = ($cell->type == 1) ? 1 : 2;
+                $weight = ($cell->type == 1) ? 4 : 1;
 
                 $action = new Line();
                 $action->origine = $curentCell->index;
                 $action->destination = $cell->index;
                 $action->weight = $weight;
-                $action->distance = 1;
+                $action->type = $cell->type;
+                $action->generateDistance($cell);
 
                 $this->listAction->add($action);
             }
@@ -101,6 +102,11 @@ class Graph
                 }
 
                 if ($neight->color === 'WHITE') {
+                    //set parent sur les voisins
+                    $neight->setParent($cell);
+                    // add voisin sur le parent
+                    $cell->addChildren($neight);
+
                     $queue->enqueue($neight);
 
                     $neight->color = 'GREY';

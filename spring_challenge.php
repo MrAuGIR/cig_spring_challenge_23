@@ -1,5 +1,5 @@
 <?php
-// Last compile time: 29/05/23 20:29 
+// Last compile time: 29/05/23 23:51 
 
 
 
@@ -68,7 +68,7 @@ class Graph
      * @param Cell $curentCell
      * @return void
      */
-    public function parcoursEnLargeur(Cell $curentCell)
+    public function parcoursEnLargeur(Cell $curentCell) : void
     {
         $queue = new \SplQueue();
 
@@ -81,13 +81,14 @@ class Graph
             $cell = $queue->dequeue();
 
             if ($cell->resources > 0) {
-                $weight = ($cell->type == 1) ? 1 : 2;
+                $weight = ($cell->type == 1) ? 4 : 1;
 
                 $action = new Line();
                 $action->origine = $curentCell->index;
                 $action->destination = $cell->index;
                 $action->weight = $weight;
-                $action->distance = 1;
+                $action->type = $cell->type;
+                $action->generateDistance($cell);
 
                 $this->listAction->add($action);
             }
@@ -103,6 +104,11 @@ class Graph
                 }
 
                 if ($neight->color === 'WHITE') {
+                    //set parent sur les voisins
+                    $neight->setParent($cell);
+                    // add voisin sur le parent
+                    $cell->addChildren($neight);
+
                     $queue->enqueue($neight);
 
                     $neight->color = 'GREY';
@@ -127,16 +133,29 @@ class Cell
      * @var int
      */
     public  $index;
-    public  $type; // 0 aucune resource, 1 , 2 contient des cristaux
+
+    /**
+     * @var int $type 0 aucune resource, 1 des oeufs, 2 contient des cristaux
+     */
+    public  $type;
+
+    /**
+     * @var int $originalResources // les ressources d'origine
+     */
+    public $originalResources;
     public  $resources;
     public  $myAnts;
     public  $oppAnts;
-    public  $color = 'WHITE'; // Blanc non visité, gris visité une seule fois, noir visité
+
+    /**
+     * @var string $color Blanc non visité, gris visité une seule fois, noir visité
+     */
+    public  $color = 'WHITE';
     public  $prevResource;
     /**
      * @var array
      */
-    public $neightboors;
+    public $neighbors;
     /**
      * @var bool
      */
@@ -151,15 +170,35 @@ class Cell
      */
     public $isEmpty = false;
 
-    public function __construct(int $index, int $type, int $resources, int $myAnts, array $neightboors, bool $isFriendBase = false, bool $isEnnemyBase = false)
+    /**
+     * @var Cell|null $parent
+     */
+    public $parent;
+
+    /**
+     * @var Cell[] $chilrens
+     */
+    public $chilrens;
+
+    /**
+     * @param int $index
+     * @param int $type
+     * @param int $resources
+     * @param int $myAnts
+     * @param array $neighbors
+     * @param bool $isFriendBase
+     * @param bool $isEnnemyBase
+     */
+    public function __construct(int $index, int $type, int $resources, int $myAnts, array $neighbors, bool $isFriendBase = false, bool $isEnnemyBase = false)
     {
         $this->index = $index;
         $this->type = $type;
         $this->resources = $resources;
         $this->myAnts = $myAnts;
-        $this->neightboors = $neightboors;
+        $this->neighbors = $neighbors;
         $this->isFriendBase = $isFriendBase;
         $this->isEnnemyBase = $isEnnemyBase;
+        $this->originalResources = $resources;
     }
 
     /**
@@ -170,7 +209,7 @@ class Cell
         $this->prevResource = $this->resources;
         $this->resources = $value;
 
-        if ($value <= 0 && $this->prevResource > 0) {
+        if ($this->getStatuResource() <= 25.0) {
             $this->isEmpty = true;
         }
 
@@ -181,7 +220,48 @@ class Cell
      * @return int[]
      */
     public function getIndexNeighbors() : array {
-        return $this->neightboors;
+        return $this->neighbors;
+    }
+
+    /**
+     * @return Cell|null
+     */
+    public function getParent() : ?Cell {
+        return $this->parent;
+    }
+
+    /**
+     * @param Cell $cell
+     * @return $this
+     */
+    public function setParent(Cell $cell) : self {
+        $this->parent = $cell;
+        return $this;
+    }
+
+    /**
+     * @return Cell[]
+     */
+    public function getChildren() : array {
+        return $this->chilrens;
+    }
+
+    /**
+     * @param Cell $children
+     * @return void
+     */
+    public function addChildren(Cell $children) : void {
+        $this->chilrens[] = $children;
+    }
+
+    /**
+     * @return float entre 0 et 100 %
+     */
+    public function getStatuResource() : float {
+        if ($this->originalResources <= 0) {
+            return 0.0;
+        }
+        return floor(($this->resources * 100) / $this->originalResources);
     }
 }
 
@@ -209,11 +289,68 @@ class Line implements Action
     public $distance;
 
     /**
+     * @var array list des cellules du chemin
+     */
+    public $chemin;
+
+    /**
+     * @var int $type type destination : 0 rien | 1  oeufs | 2 resources
+     */
+    public $type;
+
+    public function __construct()
+    {
+        $this->chemin = [];
+    }
+
+    /**
      * @return string
      */
     public function toString(): string
     {
         return self::CODE." $this->origine $this->destination $this->weight;";
+    }
+
+    /**
+     * @param Cell $cell
+     * @return void
+     */
+    public function generateDistance(Cell $cell) : void {
+
+        $this->chemin[] = $cell;
+
+        if (empty($parent = $cell->getParent())) {
+            $this->distance = 1;
+            return;
+        }
+        $this->chemin[] = $parent;
+
+        while ($parent !== null) {
+            $parent = $parent->getParent();
+            if(!empty($parent)) {
+                $this->chemin[] = $parent;
+            }
+        }
+        $this->distance = (count($this->chemin) -1) <= 0 ? 1 : count($this->chemin) -1;
+    }
+
+    /**
+     * @return string
+     */
+    public function displayChemin() : string {
+        $return = '';
+
+        $chemin = array_reverse($this->chemin);
+
+        foreach ($chemin as $key => $cell) {
+            $end = '';
+            if (isset($chemin[$key+1])) {
+                $end = '->';
+            }
+            $return .= $cell->index.$end;
+        }
+
+        return "MESSAGE ".$return.";";
     }
 }
 
@@ -253,13 +390,55 @@ class ListAction
     }
 
     /**
+     * @param Cell $cell
+     * @param string $mode
+     * @return $this
+     */
+    public function update(Cell $cell, string $mode = "INIT") : self {
+        if (isset($this->actions[$cell->index])) {
+
+            if (empty($cell->originalResources)) {
+                return $this;
+            }
+
+            if ($mode === "INIT") {
+                if ($this->actions[$cell->index]->type == 1) {
+                    $this->actions[$cell->index]->weight = 4;
+                } elseif($this->actions[$cell->index]->type == 2) {
+                    $this->actions[$cell->index]->weight = 1;
+                }
+            } else {
+                if ($this->actions[$cell->index]->type == 1) {
+                    $this->actions[$cell->index]->weight = 1;
+                } elseif($this->actions[$cell->index]->type == 2) {
+                    $this->actions[$cell->index]->weight = 4;
+                }
+            }
+
+            if ($cell->getStatuResource() <= 25.0) {
+                $this->actions[$cell->index]->weight = 0;
+            } elseif ($cell->getStatuResource() <= 35.0) {
+                $this->actions[$cell->index]->weight = 1;
+            } elseif ($cell->getStatuResource() <= 50) {
+                $this->actions[$cell->index]->weight = 2;
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * @param int $limit
      * @return string
      */
-    public function outPut() : string {
+    public function outPut(int $limit = 3) : string {
 
         $return = '';
         foreach ($this->actions as $key => $action) {
+            if ($limit <= 0) {
+                continue;
+            }
             $return .= $action->toString();
+            $limit--;
         }
         return $return."\n";
     }
@@ -271,11 +450,27 @@ class ListAction
         usort($this->actions, function ($a,$b){
             return $a->distance > $b->distance;
         });
+
+        $actionSorted = [];
+        foreach ($this->actions as $key => $action) {
+            $actionSorted[$action->destination] = $action;
+        }
+        $this->actions = $actionSorted;
+
         return $this;
     }
+
+    /**
+     * @return string
+     */
+    public function chemins() : string {
+        $return = '';
+        foreach ($this->actions as $key => $action) {
+            $return .= $action->displayChemin();
+        }
+        return $return."\n";
+    }
 }
-
-
 
 
 
@@ -289,16 +484,19 @@ class ListAction
 /** @var Cell[] $listCells */
 $listCells = [];
 
-$actions = "";
 
  /**
   * @var null|Cell $myBase
   */
  $myBase = null;
 
-$listDestination = [];
+ /**
+ * @var int $limit nombre d'action au départ
+ */
+ $limit = 2;
 
-$listActions = new ListAction();
+ $antTotal = 0;
+ $startAnt = 0;
 
 // $numberOfCells: amount of hexagonal cells in this map
 fscanf(STDIN, "%d", $numberOfCells);
@@ -332,9 +530,10 @@ $graph = new Graph($myBase);
 $graph->setStackCells($listCells);
 $graph->parcoursEnLargeur($myBase);
 
-//parcoure($myBase,$listActions,$listCells,$myBase->index);
-//$listActions->sortByDistance();
+// trie des actions des plus proche au plus court
+$graph->listAction->sortByDistance();
 
+$loop = 0;
 // game loop
 while (TRUE)
 {
@@ -349,60 +548,30 @@ while (TRUE)
         $cell->updateResource($resources);
         $cell->oppAnts = $oppAnts;
 
+        if ($loop == 0 && $myBase->index == $i) {
+            $startAnt = $myAnts;
+            $antTotal = $startAnt;
+        } elseif ($myBase->index == $i && $loop !== 0) {
+            $antTotal += $myAnts;
+        }
+
         if ($cell->isEmpty) {
             $graph->listAction->remove($cell->index);
         }
 
+        $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
+        $limit = ($antTotal >= (2 * $startAnt ))? 3: $limit;
+        $limit = ($antTotal >= (3 * $startAnt ))? 4: $limit;
+        $graph->listAction->update($cell,$mode);
+
     }
+    $loop += 1;
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
-   
-    echo($graph->listAction->outPut());
-}
-
-/**
- * @param Cell $cell
- * @param ListAction $listAction
- * @param array $listCells
- * @param $originIndex
- * @param int $distance
- * @return void
- */
-function parcoure(Cell $cell, ListAction $listAction, array $listCells,$originIndex, $distance = 0) {
-    $distance += 1;
-    foreach ($cell->neightboors as $key => $neighIndex) {
-        if ($neighIndex <= 0 ) {
-            continue;
-        }
-
-        $neigh = $listCells[$neighIndex];
-
-        if ($neigh->color !== "WHITE") {
-            continue;
-        }
-
-        if ($neigh->resources > 0) {
-            $weight = ($neigh->type == 1) ? 1 : 2;
-
-            $action = new Line();
-            $action->origine = $originIndex;
-            $action->destination = $neigh->index;
-            $action->weight = $weight;
-            $action->distance = 1;
-
-            $listAction->add($action);
-
-           // $actions .= "LINE $originIndex $neigh->index $weight;";
-        }
-
-        $neigh->color = "GRIS";
-
-        if (!empty($neigh->neightboors)) {
-            parcoure($neigh,$listAction,$listCells,$originIndex,$distance);
-        }
-    }
+    //echo($graph->listAction->chemins());
+    echo($graph->listAction->outPut($limit));
 
 }
 

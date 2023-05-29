@@ -18,6 +18,14 @@ $listCells = [];
   */
  $myBase = null;
 
+ /**
+ * @var int $limit nombre d'action au départ
+ */
+ $limit = 2;
+
+ $antTotal = 0;
+ $startAnt = 0;
+
 // $numberOfCells: amount of hexagonal cells in this map
 fscanf(STDIN, "%d", $numberOfCells);
 for ($i = 0; $i < $numberOfCells; $i++)
@@ -50,7 +58,10 @@ $graph = new Graph($myBase);
 $graph->setStackCells($listCells);
 $graph->parcoursEnLargeur($myBase);
 
+// trie des actions des plus proche au plus court
+$graph->listAction->sortByDistance();
 
+$loop = 0;
 // game loop
 while (TRUE)
 {
@@ -65,17 +76,40 @@ while (TRUE)
         $cell->updateResource($resources);
         $cell->oppAnts = $oppAnts;
 
+        if ($loop == 0 && $myBase->index == $i) {
+            $startAnt = $myAnts;
+            $antTotal = $startAnt;
+        } elseif ($myBase->index == $i && $loop !== 0) {
+            $antTotal += $myAnts;
+        }
+
         if ($cell->isEmpty) {
             $graph->listAction->remove($cell->index);
         }
 
+        /**
+         * @todo checker si il y a des actions vers des cellules oeufs sinon passer en MODE_RESOURCES
+         * @todo créer un service qui supprime les actions vers les cellules oeufs  à partir d'un certains nombre de fourmis
+         * @todo mettre en place un recherche du chemin le plus court a partir d'un première ressource vers les autres ressources
+         * @todo Mettre en place les calculs pour les puissances sur les beacon en fonction des distances, du nombre de départ de fourmis
+         * @todo si les cellules oeufs sont proche mettre un poids ford, si dans les trois plus proche resources il n'y a que des oeufs
+         * @todo placer le poids des beacon à 1 lors des actions LINE -> puis utiliser les actions BEACON pour setter le bon poids
+         */
+
+        $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
+        $limit = ($antTotal >= (2 * $startAnt ))? 3: $limit;
+        $limit = ($antTotal >= (3 * $startAnt ))? 4: $limit;
+        $graph->listAction->update($cell,$mode);
+
     }
+    $loop += 1;
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
-   
-    echo($graph->listAction->outPut());
+    //echo($graph->listAction->chemins());
+    echo($graph->listAction->outPut($limit));
+
 }
 
 /**
