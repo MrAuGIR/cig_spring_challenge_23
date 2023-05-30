@@ -26,6 +26,7 @@ class Cell
      * @var string $color Blanc non visité, gris visité une seule fois, noir visité
      */
     public  $color = 'WHITE';
+    public $colorAs = "WHITE";
     public  $prevResource;
     /**
      * @var array
@@ -51,9 +52,29 @@ class Cell
     public $parent;
 
     /**
+     * @var Cell|null $parentAs parent pour l'algo A-Star
+     */
+    public $parentAs;
+
+    /**
      * @var Cell[] $chilrens
      */
     public $chilrens;
+
+    /**
+     * @var float|int $g_cost
+     */
+    public $g_cost;
+
+    /**
+     * @var float|int $h_cost
+     */
+    public $h_cost;
+
+    /**
+     * @var float|int $f_cost
+     */
+    public $f_cost;
 
     /**
      * @param int $index
@@ -74,6 +95,10 @@ class Cell
         $this->isFriendBase = $isFriendBase;
         $this->isEnnemyBase = $isEnnemyBase;
         $this->originalResources = $resources;
+        $this->g_cost = 0;
+        $this->h_cost = 0;
+        $this->f_cost = 0;
+        $this->childrens = [];
     }
 
     /**
@@ -115,10 +140,26 @@ class Cell
     }
 
     /**
+     * @return Cell|null
+     */
+    public function getParentAs() : ?Cell {
+        return $this->parentAs;
+    }
+
+    /**
+     * @param Cell $parent
+     * @return $this
+     */
+    public function setParentAs(Cell $parent) : self {
+        $this->parentAs = $parent;
+        return $this;
+    }
+
+    /**
      * @return Cell[]
      */
     public function getChildren() : array {
-        return $this->chilrens;
+        return $this->chilrens ?? [];
     }
 
     /**

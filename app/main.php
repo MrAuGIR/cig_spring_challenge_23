@@ -4,6 +4,7 @@ namespace App;
 
 use App\Graph\Graph;
 use App\Model\Cell;
+use App\Model\Line;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -58,8 +59,18 @@ $graph = new Graph($myBase);
 $graph->setStackCells($listCells);
 $graph->parcoursEnLargeur($myBase);
 
-// trie des actions des plus proche au plus court
+// trie des actions des plus proche au plus loin
 $graph->listAction->sortByDistance();
+
+/**
+ * calcul de la meilleur route
+ * @var Line $line
+ */
+$line = end($graph->listAction->actions);
+$cellEnd = $listCells[21];
+
+$road = $graph->aStart($myBase,$cellEnd);
+
 
 $loop = 0;
 // game loop
@@ -108,7 +119,8 @@ while (TRUE)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
     //echo($graph->listAction->chemins());
-    echo($graph->listAction->outPut($limit));
+   // echo($graph->listAction->outPut($limit) ?? 'MESSAGE EMPTY');
+    echo $road->outputAction()."\n";
 
 }
 
