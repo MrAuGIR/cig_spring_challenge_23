@@ -3,8 +3,10 @@
 namespace App;
 
 use App\Graph\Graph;
+use App\Graph\GraphPrim;
 use App\Model\Cell;
 use App\Model\Line;
+use App\Service\Helper;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -63,14 +65,16 @@ $graph->parcoursEnLargeur($myBase);
 $graph->listAction->sortByDistance();
 
 /**
- * calcul de la meilleur route
- * @var Line $line
+ * graph prim
  */
-$line = end($graph->listAction->actions);
-$cellEnd = $listCells[21];
 
-$road = $graph->aStart($myBase,$cellEnd);
-
+$graphPrime = new GraphPrim($listCells);
+$pred = $graphPrime->prim($myBase);
+$roads = [];
+/** @var Line $action */
+foreach ($graph->listAction->actions as $action) {
+    $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+}
 
 $loop = 0;
 // game loop
@@ -120,8 +124,18 @@ while (TRUE)
     
     //echo($graph->listAction->chemins());
    // echo($graph->listAction->outPut($limit) ?? 'MESSAGE EMPTY');
-    echo $road->outputAction()."\n";
 
+    $output = "";
+    foreach ($roads as $road) {
+
+
+        foreach ($road as $key => $index) {
+            $output .= "BEACON $index 4;";
+        }
+    }
+    $output .= "\n";
+
+    echo($output);
 }
 
 /**

@@ -5,12 +5,12 @@ namespace App\Model;
 class Road
 {
     /**
-     * @var int $origine index cellule origine
+     * @var Cell $origine cellule origine
      */
     public $origine;
 
     /**
-     * @var int $destination index cellule destination
+     * @var Cell $destination cellule destination
      */
     public $destination;
 
@@ -25,6 +25,11 @@ class Road
     public $distance;
 
     /**
+     * @var int resources
+     */
+    public $resources;
+
+    /**
      * @param Cell $start
      * @param Cell $end
      * @return self
@@ -33,13 +38,17 @@ class Road
         $this->list = [];
         $this->origine = $start;
         $this->destination = $end;
+        $this->resources = 0;
 
         $cellActuel = $end;
+        $this->resources += $end->resources;
 
         while ($cellActuel !== $start) {
             $this->list[] = $cellActuel;
             $cellActuel = $cellActuel->getParentAs();
+            $this->resources += $cellActuel->resources;
         }
+        $this->list[] = $start;
 
         $this->list = array_reverse($this->list);
         $this->distance = (count($this->list) -1) <= 0 ? 1 : count($this->list) -1;

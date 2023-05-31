@@ -1,5 +1,5 @@
 <?php
-// Last compile time: 31/05/23 0:02 
+// Last compile time: 31/05/23 22:59 
 
 
 
@@ -124,7 +124,7 @@ class Graph
      * @param Cell $destination
      * @return void
      */
-    public function aStart(Cell $start, Cell $destination) : Road {
+    public function aStart(Cell $start, Cell $destination) : ?Road {
         $open = new SplQueue();
         $close = [];
 
@@ -177,12 +177,13 @@ class Graph
                         $open->enqueue($children);
                     }
                 } else {
-//                    echo error_log(var_export("costTentative <= children->g_cost",true));
-//                    echo error_log(var_export(" ",true));
+                    echo error_log(var_export("costTentative < children->g_cost",true));
+                    echo error_log(var_export(" ",true));
                 }
             }
 
         }
+        return null;
     }
 
     /**
@@ -243,6 +244,113 @@ class Graph
             }
         }
         return $count;
+    }
+}
+
+
+
+
+
+class GraphPrim
+{
+    /**
+     * @var Cell[] $cells
+     */
+    public $cells;
+
+    /**
+     * @var array $cout
+     */
+    public $cout;
+
+    /**
+     * @var array $pred
+     */
+    public $pred;
+
+    /**
+     * @var array $inQueue
+     */
+    public $inQueue;
+
+    /**
+     * @param Cell[] $cells
+     */
+    public function __construct(array $cells) {
+        $this->cells = $cells;
+        $this->cout = [];
+        $this->pred = [];
+    }
+
+    /**
+     * @param Cell $start
+     * @return array
+     */
+    public function prim(Cell $start) : array {
+        $numCells = count($this->cells);
+        $this->cout = [];
+        $this->pred = [];
+
+        foreach ($this->cells as $index => $cell) {
+            $this->cout[$index] = - INF;
+            $this->pred[$index] = null;
+        }
+
+        $this->cout[$start->index] = 0;
+        $queue = new \SplPriorityQueue();
+
+        // ajout des sommets a la file
+        foreach ($this->cells as $index => $cell) {
+            $queue->insert($index, $this->cout[$index]);
+            $this->inQueue[$index] = true;
+        }
+        $counter = 0;
+        while (!$queue->isEmpty()) {
+            $counter++;
+            $index = $queue->extract(); //defilé la cellule de priorité maximal
+
+            foreach ($this->cells[$index]->getIndexNeighbors() as $neighbor) {
+
+                if ($neighbor < 0) {
+                    continue;
+                }
+
+                if (in_array($neighbor,$this->pred)) {
+                    continue;
+                }
+
+                $weight = $this->cells[$index]->resources;
+                if ($this->inQueue[$neighbor] && ($this->cout[$neighbor] <= $weight)) {
+                    $this->pred[$neighbor] = $index;
+                    $this->cout[$neighbor] = $weight;
+
+                    $queue->insert($neighbor,$this->cout[$neighbor]);
+                }
+            }
+        }
+        return $this->pred;
+    }
+
+    /**
+     * @param $start
+     * @param $end
+     * @return array
+     */
+    public function buildRoad($start, $end) : array {
+        $path = array();
+        $current = $end;
+
+        while ($current !== $start) {
+            array_unshift($path, $current);
+
+            $current = $this->pred[$current] ;
+            if ($current === null){
+                break;
+            }
+        }
+
+        array_unshift($path, $start);
+        return $path;
     }
 }
 
@@ -646,12 +754,12 @@ class ListAction
 class Road
 {
     /**
-     * @var int $origine index cellule origine
+     * @var Cell $origine cellule origine
      */
     public $origine;
 
     /**
-     * @var int $destination index cellule destination
+     * @var Cell $destination cellule destination
      */
     public $destination;
 
@@ -666,6 +774,11 @@ class Road
     public $distance;
 
     /**
+     * @var int resources
+     */
+    public $resources;
+
+    /**
      * @param Cell $start
      * @param Cell $end
      * @return self
@@ -674,13 +787,17 @@ class Road
         $this->list = [];
         $this->origine = $start;
         $this->destination = $end;
+        $this->resources = 0;
 
         $cellActuel = $end;
+        $this->resources += $end->resources;
 
         while ($cellActuel !== $start) {
             $this->list[] = $cellActuel;
             $cellActuel = $cellActuel->getParentAs();
+            $this->resources += $cellActuel->resources;
         }
+        $this->list[] = $start;
 
         $this->list = array_reverse($this->list);
         $this->distance = (count($this->list) -1) <= 0 ? 1 : count($this->list) -1;
@@ -702,6 +819,83 @@ class Road
         return $return;
     }
 }
+
+
+
+
+
+
+
+
+
+class Helper
+{
+    public function evaluateRoads(Graph $graph, ListAction $listAction,Cell $myBase, array &$listCell) : array
+    {
+
+        $road = $graph->aStart($myBase, $listCell[5]);
+
+        echo error_log(var_export($road->destination->index,true));
+        die();
+    }
+
+
+    public function evaluateRoad(Graph $graph, ListAction $listAction, Cell $myBase, array &$listCell, array &$roads) : void {
+        $roadToEvaluate = [];
+
+        $resources = 0;
+        /**
+         * @var  int $key index cell
+         * @var Line  $line
+         */
+        foreach ($listAction->actions as $key => $line) {
+
+            $this->getRoads($graph, $myBase, $listCell[$line->destination], $roadToEvaluate, $roads);
+        }
+    }
+
+    /**
+     * @param Graph $graph
+     * @param Cell $myBase
+     * @param Cell $destination
+     * @param array $roadToEvaluate
+     * @param array $roads
+     * @param $roadSelected
+     * @return array
+     */
+    public function getRoads(Graph $graph, Cell $myBase,Cell $destination, array $roadToEvaluate, array &$roads): array
+    {
+        /** @var Road|null $roadSelected */
+        $roadSelected = null;
+
+        if (!empty($roadFromMyBase = $graph->aStart($myBase, $destination))) {
+            $roadToEvaluate[] = $roadFromMyBase;
+
+            /** @var Road $road */
+            foreach ($roads as $road) {
+                $roadToEvaluate[] = $graph->aStart($road->destination, $destination);
+            }
+
+            /** @var Road $road */
+            foreach ($roadToEvaluate as $road) {
+
+                if ($roadSelected === null) {
+                    $roadSelected = $roads;
+                }
+
+                if ($road->resources > $roadSelected->resources) {
+                    $roadSelected = $road;
+                }
+            }
+            $roads[] = $roadSelected;
+        }
+        return $roads;
+    }
+
+
+}
+
+
 
 
 
@@ -766,14 +960,16 @@ $graph->parcoursEnLargeur($myBase);
 $graph->listAction->sortByDistance();
 
 /**
- * calcul de la meilleur route
- * @var Line $line
+ * graph prim
  */
-$line = end($graph->listAction->actions);
-$cellEnd = $listCells[21];
 
-$road = $graph->aStart($myBase,$cellEnd);
-
+$graphPrime = new GraphPrim($listCells);
+$pred = $graphPrime->prim($myBase);
+$roads = [];
+/** @var Line $action */
+foreach ($graph->listAction->actions as $action) {
+    $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+}
 
 $loop = 0;
 // game loop
@@ -823,8 +1019,18 @@ while (TRUE)
     
     //echo($graph->listAction->chemins());
    // echo($graph->listAction->outPut($limit) ?? 'MESSAGE EMPTY');
-    echo $road->outputAction()."\n";
 
+    $output = "";
+    foreach ($roads as $road) {
+
+
+        foreach ($road as $key => $index) {
+            $output .= "BEACON $index 4;";
+        }
+    }
+    $output .= "\n";
+
+    echo($output);
 }
 
 /**

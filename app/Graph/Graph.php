@@ -122,7 +122,7 @@ class Graph
      * @param Cell $destination
      * @return void
      */
-    public function aStart(Cell $start, Cell $destination) : Road {
+    public function aStart(Cell $start, Cell $destination) : ?Road {
         $open = new SplQueue();
         $close = [];
 
@@ -175,12 +175,13 @@ class Graph
                         $open->enqueue($children);
                     }
                 } else {
-//                    echo error_log(var_export("costTentative <= children->g_cost",true));
-//                    echo error_log(var_export(" ",true));
+                    echo error_log(var_export("costTentative < children->g_cost",true));
+                    echo error_log(var_export(" ",true));
                 }
             }
 
         }
+        return null;
     }
 
     /**
