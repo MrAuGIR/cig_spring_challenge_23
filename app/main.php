@@ -112,12 +112,25 @@ while (TRUE)
          */
 
         $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
-        $limit = ($antTotal >= (2 * $startAnt ))? 3: $limit;
-        $limit = ($antTotal >= (3 * $startAnt ))? 4: $limit;
         $graph->listAction->update($cell,$mode);
 
     }
     $loop += 1;
+
+    $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
+    $mode = ($antTotal >= (4 * $startAnt ))? 'MODE_FULL_CRISTAUX' : $mode;
+
+    if ($loop > 1) {
+        $graphPrime = new GraphPrim($listCells);
+        $graphPrime->setModeResource($mode);
+        $graphPrime->prim($myBase);
+        $roads = [];
+        /** @var Line $action */
+        foreach ($graph->listAction->actions as $action) {
+            $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+        }
+
+    }
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
@@ -127,13 +140,12 @@ while (TRUE)
 
     $output = "";
     foreach ($roads as $road) {
-
-
         foreach ($road as $key => $index) {
-            $output .= "BEACON $index 4;";
+            $weight = $graphPrime->evaluateWeightByCell($index);
+            $output .= "BEACON $index $weight;";
         }
     }
-    $output .= "\n";
+    $output .= "MESSAGE loop N° $loop; MESSAGE mode $mode\n";
 
     echo($output);
 }

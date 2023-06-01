@@ -27,6 +27,11 @@ class GraphPrim
     public $inQueue;
 
     /**
+     * @var string
+     */
+    public $modeResource;
+
+    /**
      * @param Cell[] $cells
      */
     public function __construct(array $cells) {
@@ -47,6 +52,7 @@ class GraphPrim
         foreach ($this->cells as $index => $cell) {
             $this->cout[$index] = - INF;
             $this->pred[$index] = null;
+            $cell->color = "WHITE";
         }
 
         $this->cout[$start->index] = 0;
@@ -60,7 +66,13 @@ class GraphPrim
         $counter = 0;
         while (!$queue->isEmpty()) {
             $counter++;
-            $index = $queue->extract(); //defilé la cellule de priorité maximal
+            $index = $queue->extract(); //défilé la cellule de priorité maximal
+
+            if ($this->cells[$index]->color !== "WHITE") {
+                continue;
+            }
+
+            $this->cells[$index]->color = "GREY";
 
             foreach ($this->cells[$index]->getIndexNeighbors() as $neighbor) {
 
@@ -68,11 +80,11 @@ class GraphPrim
                     continue;
                 }
 
-                if (in_array($neighbor,$this->pred)) {
-                    continue;
+                if ($this->cells[$neighbor]->color !== 'WHITE') {
+                    continue; // Ignorer le voisin déjà inclus dans le chemin
                 }
 
-                $weight = $this->cells[$index]->resources;
+                $weight = $this->evaluatePriorityCell($this->cells[$index]);
                 if ($this->inQueue[$neighbor] && ($this->cout[$neighbor] <= $weight)) {
                     $this->pred[$neighbor] = $index;
                     $this->cout[$neighbor] = $weight;
@@ -80,6 +92,7 @@ class GraphPrim
                     $queue->insert($neighbor,$this->cout[$neighbor]);
                 }
             }
+            $this->cells[$index]->color = "BLACK";
         }
         return $this->pred;
     }
@@ -104,5 +117,47 @@ class GraphPrim
 
         array_unshift($path, $start);
         return $path;
+    }
+
+    /**
+     * @param string $mode
+     * @return $this
+     */
+    public function setModeResource(string $mode ="MODE_INIT") : self {
+        $this->modeResource = $mode;
+        return $this;
+    }
+
+    /**
+     * @param int $index
+     * @return int
+     */
+    public function evaluateWeightByCell(int $index) : int {
+        return 1;
+    }
+
+    public function evaluatePriorityCell(Cell $cell) : int {
+
+        $priority = $cell->resources ?? 0;
+
+        foreach ($cell->neighbors as $neighbor) {
+
+            if ($neighbor < 0) {
+                continue;
+            }
+
+            if ($this->modeResource == 'MODE_FULL_CRISTAUX' && $cell->type === 1) {
+                continue;
+            } else {
+                $priority += isset($this->cells[$neighbor]) ? (int)floor($this->cells[$neighbor]->resources / 6) : 0;
+            }
+
+        }
+
+        if ($this->modeResource == 'MODE_FULL_CRISTAUX' && $cell->type === 1) {
+            return 0;
+        }
+
+        return $priority;
     }
 }
