@@ -3,6 +3,7 @@
 namespace App\Graph;
 
 use App\Model\Cell;
+use App\Model\ListAction;
 
 class GraphPrim
 {
@@ -136,6 +137,25 @@ class GraphPrim
         return 1;
     }
 
+    /**
+     * @param int $distance
+     * @return int
+     */
+    public function calculCoefDistance(int $distance) : int {
+        // si les ressources cristaux sont plus que 6 -> priorisé celles proches
+        // une fois que la quantité diminue ou que le nombre de fourmis augmente baisser la pénalité des cellules distances
+
+        if ($this->modeResource == 'MODE_INIT' && $distance > 8) {
+            return 0;
+        }
+
+        return 1;
+    }
+
+    /**
+     * @param Cell $cell
+     * @return int
+     */
     public function evaluatePriorityCell(Cell $cell) : int {
 
         $priority = $cell->resources ?? 0;
@@ -158,6 +178,28 @@ class GraphPrim
             return 0;
         }
 
-        return $priority;
+        return ($priority * $this->calculCoefDistance($this->generateDistance($cell)));
+    }
+
+    /**
+     * @param Cell $cell
+     * @return void
+     */
+    private  function generateDistance(Cell $cell) : int {
+        $chemin[] = $cell;
+
+        if (empty($parent = $cell->getParent())) {
+            return $distance = 1;
+        }
+        $chemin[] = $parent;
+
+        while ($parent !== null) {
+            $parent = $parent->getParent();
+            if(!empty($parent)) {
+                $chemin[] = $parent;
+            }
+        }
+        return (count($chemin) -1) <= 0 ? 1 : count($chemin) -1;
+
     }
 }

@@ -1,5 +1,5 @@
 <?php
-// Last compile time: 02/06/23 0:09 
+// Last compile time: 03/06/23 18:33 
 
 
 
@@ -139,10 +139,6 @@ class Graph
             // cellule avec le plus de value dans la pile
             $curentCell = $this->findMostCostCellule($open);
 
-//            echo error_log(var_export("destination index ".$destination->index,true));
-//            echo error_log(var_export("current index ".$curentCell->index,true));
-//            echo error_log(var_export(' ',true));
-
             if ($curentCell->index === $destination->index) {
                 $road =  new Road();
                 $road->build($start,$destination);
@@ -158,13 +154,8 @@ class Graph
                 }
 
                 $costTentative = $this->calculCost($curentCell, $children);
-//                echo error_log(var_export("cost tentative  ".$costTentative,true));
-//                echo error_log(var_export("children cost ".$children->g_cost,true));
 
                 if ($costTentative >= $children->g_cost) {
-//                    echo error_log(var_export("parentIndex ".$curentCell->index,true));
-//                    echo error_log(var_export("children index ".$children->index,true));
-//                    echo error_log(var_export(' ',true));
 
                     $children->g_cost = $costTentative;
                     $children->h_cost = $this->heuristique($children,$destination);
@@ -176,9 +167,6 @@ class Graph
                         $children->colorAs = "GRAY";
                         $open->enqueue($children);
                     }
-                } else {
-                    echo error_log(var_export("costTentative < children->g_cost",true));
-                    echo error_log(var_export(" ",true));
                 }
             }
 
@@ -246,6 +234,7 @@ class Graph
         return $count;
     }
 }
+
 
 
 
@@ -383,6 +372,25 @@ class GraphPrim
         return 1;
     }
 
+    /**
+     * @param int $distance
+     * @return int
+     */
+    public function calculCoefDistance(int $distance) : int {
+        // si les ressources cristaux sont plus que 6 -> priorisé celles proches
+        // une fois que la quantité diminue ou que le nombre de fourmis augmente baisser la pénalité des cellules distances
+
+        if ($this->modeResource == 'MODE_INIT' && $distance > 8) {
+            return 0;
+        }
+
+        return 1;
+    }
+
+    /**
+     * @param Cell $cell
+     * @return int
+     */
     public function evaluatePriorityCell(Cell $cell) : int {
 
         $priority = $cell->resources ?? 0;
@@ -405,7 +413,29 @@ class GraphPrim
             return 0;
         }
 
-        return $priority;
+        return ($priority * $this->calculCoefDistance($this->generateDistance($cell)));
+    }
+
+    /**
+     * @param Cell $cell
+     * @return void
+     */
+    private  function generateDistance(Cell $cell) : int {
+        $chemin[] = $cell;
+
+        if (empty($parent = $cell->getParent())) {
+            return $distance = 1;
+        }
+        $chemin[] = $parent;
+
+        while ($parent !== null) {
+            $parent = $parent->getParent();
+            if(!empty($parent)) {
+                $chemin[] = $parent;
+            }
+        }
+        return (count($chemin) -1) <= 0 ? 1 : count($chemin) -1;
+
     }
 }
 
@@ -695,9 +725,21 @@ class ListAction
      */
     public $actions;
 
+    /**
+     * @var int $countAntCells
+     */
+    public $countAntCells;
+
+    /**
+     * @var int $countCrisCells
+     */
+    public $countCrisCells;
+
     public function __construct()
     {
         $this->actions = [];
+        $this->countAntCells = 0;
+        $this->countCrisCells = 0;
     }
 
     /**
@@ -705,6 +747,15 @@ class ListAction
      * @return $this
      */
     public function add(Action $action) : self {
+        /** @var Line $action */
+        if ($action->type == 1) {
+            $this->countAntCells += 1;
+        }
+
+        if ($action->type == 2) {
+            $this->countCrisCells +=1;
+        }
+
         $this->actions[$action->destination] = $action;
         return $this;
     }
@@ -958,6 +1009,7 @@ class Helper
 
 
 
+
 /**
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
@@ -1019,7 +1071,7 @@ $graph->listAction->sortByDistance();
  */
 
 $graphPrime = new GraphPrim($listCells);
-$pred = $graphPrime->prim($myBase);
+$graphPrime->prim($myBase);
 $roads = [];
 /** @var Line $action */
 foreach ($graph->listAction->actions as $action) {

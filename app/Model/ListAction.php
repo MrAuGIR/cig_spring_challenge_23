@@ -9,9 +9,21 @@ class ListAction
      */
     public $actions;
 
+    /**
+     * @var int $countAntCells
+     */
+    public $countAntCells;
+
+    /**
+     * @var int $countCrisCells
+     */
+    public $countCrisCells;
+
     public function __construct()
     {
         $this->actions = [];
+        $this->countAntCells = 0;
+        $this->countCrisCells = 0;
     }
 
     /**
@@ -19,6 +31,15 @@ class ListAction
      * @return $this
      */
     public function add(Action $action) : self {
+        /** @var Line $action */
+        if ($action->type == 1) {
+            $this->countAntCells += 1;
+        }
+
+        if ($action->type == 2) {
+            $this->countCrisCells +=1;
+        }
+
         $this->actions[$action->destination] = $action;
         return $this;
     }

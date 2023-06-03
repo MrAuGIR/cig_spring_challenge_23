@@ -6,6 +6,7 @@ use App\Graph\Graph;
 use App\Graph\GraphPrim;
 use App\Model\Cell;
 use App\Model\Line;
+use App\Model\ListAction;
 use App\Service\Helper;
 
 /**
@@ -69,7 +70,7 @@ $graph->listAction->sortByDistance();
  */
 
 $graphPrime = new GraphPrim($listCells);
-$pred = $graphPrime->prim($myBase);
+$graphPrime->prim($myBase);
 $roads = [];
 /** @var Line $action */
 foreach ($graph->listAction->actions as $action) {

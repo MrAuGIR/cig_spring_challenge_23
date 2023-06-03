@@ -137,10 +137,6 @@ class Graph
             // cellule avec le plus de value dans la pile
             $curentCell = $this->findMostCostCellule($open);
 
-//            echo error_log(var_export("destination index ".$destination->index,true));
-//            echo error_log(var_export("current index ".$curentCell->index,true));
-//            echo error_log(var_export(' ',true));
-
             if ($curentCell->index === $destination->index) {
                 $road =  new Road();
                 $road->build($start,$destination);
@@ -156,13 +152,8 @@ class Graph
                 }
 
                 $costTentative = $this->calculCost($curentCell, $children);
-//                echo error_log(var_export("cost tentative  ".$costTentative,true));
-//                echo error_log(var_export("children cost ".$children->g_cost,true));
 
                 if ($costTentative >= $children->g_cost) {
-//                    echo error_log(var_export("parentIndex ".$curentCell->index,true));
-//                    echo error_log(var_export("children index ".$children->index,true));
-//                    echo error_log(var_export(' ',true));
 
                     $children->g_cost = $costTentative;
                     $children->h_cost = $this->heuristique($children,$destination);
@@ -174,9 +165,6 @@ class Graph
                         $children->colorAs = "GRAY";
                         $open->enqueue($children);
                     }
-                } else {
-                    echo error_log(var_export("costTentative < children->g_cost",true));
-                    echo error_log(var_export(" ",true));
                 }
             }
 
