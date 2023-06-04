@@ -3,7 +3,11 @@
 namespace App;
 
 use App\Graph\Graph;
+use App\Graph\GraphPrim;
 use App\Model\Cell;
+use App\Model\Line;
+use App\Model\ListAction;
+use App\Service\Helper;
 
 /**
  * Auto-generated code below aims at helping you parse
@@ -58,8 +62,20 @@ $graph = new Graph($myBase);
 $graph->setStackCells($listCells);
 $graph->parcoursEnLargeur($myBase);
 
-// trie des actions des plus proche au plus court
+// trie des actions des plus proche au plus loin
 $graph->listAction->sortByDistance();
+
+/**
+ * graph prim
+ */
+
+$graphPrime = new GraphPrim($listCells);
+$graphPrime->prim($myBase);
+$roads = [];
+/** @var Line $action */
+foreach ($graph->listAction->actions as $action) {
+    $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+}
 
 $loop = 0;
 // game loop
@@ -87,29 +103,43 @@ while (TRUE)
             $graph->listAction->remove($cell->index);
         }
 
-        /**
-         * @todo checker si il y a des actions vers des cellules oeufs sinon passer en MODE_RESOURCES
-         * @todo créer un service qui supprime les actions vers les cellules oeufs  à partir d'un certains nombre de fourmis
-         * @todo mettre en place un recherche du chemin le plus court a partir d'un première ressource vers les autres ressources
-         * @todo Mettre en place les calculs pour les puissances sur les beacon en fonction des distances, du nombre de départ de fourmis
-         * @todo si les cellules oeufs sont proche mettre un poids ford, si dans les trois plus proche resources il n'y a que des oeufs
-         * @todo placer le poids des beacon à 1 lors des actions LINE -> puis utiliser les actions BEACON pour setter le bon poids
-         */
-
         $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
-        $limit = ($antTotal >= (2 * $startAnt ))? 3: $limit;
-        $limit = ($antTotal >= (3 * $startAnt ))? 4: $limit;
         $graph->listAction->update($cell,$mode);
 
     }
     $loop += 1;
+
+    $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
+    $mode = ($antTotal >= (4 * $startAnt ))? 'MODE_FULL_CRISTAUX' : $mode;
+
+    if ($loop > 1) {
+        $graphPrime = new GraphPrim($listCells);
+        $graphPrime->setModeResource($mode);
+        $graphPrime->prim($myBase);
+        $roads = [];
+        /** @var Line $action */
+        foreach ($graph->listAction->actions as $action) {
+            $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+        }
+
+    }
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
     //echo($graph->listAction->chemins());
-    echo($graph->listAction->outPut($limit));
+   // echo($graph->listAction->outPut($limit) ?? 'MESSAGE EMPTY');
 
+    $output = "";
+    foreach ($roads as $road) {
+        foreach ($road as $key => $index) {
+            $weight = $graphPrime->evaluateWeightByCell($index);
+            $output .= "BEACON $index $weight;";
+        }
+    }
+    $output .= "MESSAGE loop N° $loop; MESSAGE mode $mode\n";
+
+    echo($output);
 }
 
 /**

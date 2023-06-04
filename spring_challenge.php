@@ -1,5 +1,7 @@
 <?php
-// Last compile time: 29/05/23 23:51 
+// Last compile time: 03/06/23 18:33 
+
+
 
 
 
@@ -70,7 +72,7 @@ class Graph
      */
     public function parcoursEnLargeur(Cell $curentCell) : void
     {
-        $queue = new \SplQueue();
+        $queue = new SplQueue();
 
         $queue->enqueue($curentCell);
 
@@ -116,6 +118,325 @@ class Graph
             }
         }
     }
+
+    /**
+     * @param Cell $start
+     * @param Cell $destination
+     * @return void
+     */
+    public function aStart(Cell $start, Cell $destination) : ?Road {
+        $open = new SplQueue();
+        $close = [];
+
+        $start->g_cost = 0;
+        $start->h_cost = $this->heuristique($start,$destination);
+        $start->f_cost = $start->g_cost + $start->h_cost;
+
+        $open->enqueue($start);
+
+        while(!$open->isEmpty()) {
+
+            // cellule avec le plus de value dans la pile
+            $curentCell = $this->findMostCostCellule($open);
+
+            if ($curentCell->index === $destination->index) {
+                $road =  new Road();
+                $road->build($start,$destination);
+                return $road;
+            }
+
+            $curentCell->colorAs = "BLACK";
+            $open->offsetUnset($open->key());
+
+            foreach ($curentCell->getChildren() as $children) {
+                if ($children->colorAs == "BLACK") {
+                    continue;
+                }
+
+                $costTentative = $this->calculCost($curentCell, $children);
+
+                if ($costTentative >= $children->g_cost) {
+
+                    $children->g_cost = $costTentative;
+                    $children->h_cost = $this->heuristique($children,$destination);
+                   // echo error_log(var_export('cost_h : '.$children->h_cost,true));
+                    $children->f_cost = $children->g_cost + $children->h_cost;
+                    $children->setParentAs($curentCell);
+                   // echo error_log(var_export("",true));
+                    if ($children->colorAs === "WHITE") {
+                        $children->colorAs = "GRAY";
+                        $open->enqueue($children);
+                    }
+                }
+            }
+
+        }
+        return null;
+    }
+
+    /**
+     * @param SplQueue $open
+     * @return Cell
+     */
+    public function findMostCostCellule(SplQueue $open) : Cell {
+        $cellMAx = null;
+        $max = null;
+
+        /** @var Cell $cell */
+        foreach ($open as $cell) {
+
+            if ($cellMAx == null) {
+                $cellMAx = $cell;
+            }
+
+            if ($cell->resources > $max) {
+                $cellMAx = $cell;
+                $max = $cell->resources;
+            }
+        }
+        return $cellMAx;
+    }
+
+    /**
+     * @param Cell $start
+     * @param Cell $end
+     * @return float
+     */
+    private function heuristique(Cell $start, Cell $end) : float{
+        // Parcours en profondeur pour calculer le nombre de ressources
+        $visited = array();
+        return $this->parcoursEnProfondeur($start, $end, $visited);
+    }
+
+    /**
+     * @param Cell $start
+     * @param Cell $end
+     * @return float
+     */
+    private function calculCost(Cell $start, Cell $end) : float {
+
+        return (($start->resources + $end->resources) == 0) ? 1 : $start->resources + $end->resources ;
+    }
+
+    private function parcoursEnProfondeur(Cell $start, Cell $end, array &$visited) : float {
+        if ($start->index === $end->index) {
+            return $end->resources;
+        }
+
+        $visited[$start->index] = true;
+        $count = $start->resources;
+
+        foreach ($start->getChildren() as $child) {
+            if (!isset($visited[$child->index])) {
+                $count += $this->parcoursEnProfondeur($child,$end,$visited);
+            }
+        }
+        return $count;
+    }
+}
+
+
+
+
+
+
+class GraphPrim
+{
+    /**
+     * @var Cell[] $cells
+     */
+    public $cells;
+
+    /**
+     * @var array $cout
+     */
+    public $cout;
+
+    /**
+     * @var array $pred
+     */
+    public $pred;
+
+    /**
+     * @var array $inQueue
+     */
+    public $inQueue;
+
+    /**
+     * @var string
+     */
+    public $modeResource;
+
+    /**
+     * @param Cell[] $cells
+     */
+    public function __construct(array $cells) {
+        $this->cells = $cells;
+        $this->cout = [];
+        $this->pred = [];
+    }
+
+    /**
+     * @param Cell $start
+     * @return array
+     */
+    public function prim(Cell $start) : array {
+        $numCells = count($this->cells);
+        $this->cout = [];
+        $this->pred = [];
+
+        foreach ($this->cells as $index => $cell) {
+            $this->cout[$index] = - INF;
+            $this->pred[$index] = null;
+            $cell->color = "WHITE";
+        }
+
+        $this->cout[$start->index] = 0;
+        $queue = new \SplPriorityQueue();
+
+        // ajout des sommets a la file
+        foreach ($this->cells as $index => $cell) {
+            $queue->insert($index, $this->cout[$index]);
+            $this->inQueue[$index] = true;
+        }
+        $counter = 0;
+        while (!$queue->isEmpty()) {
+            $counter++;
+            $index = $queue->extract(); //défilé la cellule de priorité maximal
+
+            if ($this->cells[$index]->color !== "WHITE") {
+                continue;
+            }
+
+            $this->cells[$index]->color = "GREY";
+
+            foreach ($this->cells[$index]->getIndexNeighbors() as $neighbor) {
+
+                if ($neighbor < 0) {
+                    continue;
+                }
+
+                if ($this->cells[$neighbor]->color !== 'WHITE') {
+                    continue; // Ignorer le voisin déjà inclus dans le chemin
+                }
+
+                $weight = $this->evaluatePriorityCell($this->cells[$index]);
+                if ($this->inQueue[$neighbor] && ($this->cout[$neighbor] <= $weight)) {
+                    $this->pred[$neighbor] = $index;
+                    $this->cout[$neighbor] = $weight;
+
+                    $queue->insert($neighbor,$this->cout[$neighbor]);
+                }
+            }
+            $this->cells[$index]->color = "BLACK";
+        }
+        return $this->pred;
+    }
+
+    /**
+     * @param $start
+     * @param $end
+     * @return array
+     */
+    public function buildRoad($start, $end) : array {
+        $path = array();
+        $current = $end;
+
+        while ($current !== $start) {
+            array_unshift($path, $current);
+
+            $current = $this->pred[$current] ;
+            if ($current === null){
+                break;
+            }
+        }
+
+        array_unshift($path, $start);
+        return $path;
+    }
+
+    /**
+     * @param string $mode
+     * @return $this
+     */
+    public function setModeResource(string $mode ="MODE_INIT") : self {
+        $this->modeResource = $mode;
+        return $this;
+    }
+
+    /**
+     * @param int $index
+     * @return int
+     */
+    public function evaluateWeightByCell(int $index) : int {
+        return 1;
+    }
+
+    /**
+     * @param int $distance
+     * @return int
+     */
+    public function calculCoefDistance(int $distance) : int {
+        // si les ressources cristaux sont plus que 6 -> priorisé celles proches
+        // une fois que la quantité diminue ou que le nombre de fourmis augmente baisser la pénalité des cellules distances
+
+        if ($this->modeResource == 'MODE_INIT' && $distance > 8) {
+            return 0;
+        }
+
+        return 1;
+    }
+
+    /**
+     * @param Cell $cell
+     * @return int
+     */
+    public function evaluatePriorityCell(Cell $cell) : int {
+
+        $priority = $cell->resources ?? 0;
+
+        foreach ($cell->neighbors as $neighbor) {
+
+            if ($neighbor < 0) {
+                continue;
+            }
+
+            if ($this->modeResource == 'MODE_FULL_CRISTAUX' && $cell->type === 1) {
+                continue;
+            } else {
+                $priority += isset($this->cells[$neighbor]) ? (int)floor($this->cells[$neighbor]->resources / 6) : 0;
+            }
+
+        }
+
+        if ($this->modeResource == 'MODE_FULL_CRISTAUX' && $cell->type === 1) {
+            return 0;
+        }
+
+        return ($priority * $this->calculCoefDistance($this->generateDistance($cell)));
+    }
+
+    /**
+     * @param Cell $cell
+     * @return void
+     */
+    private  function generateDistance(Cell $cell) : int {
+        $chemin[] = $cell;
+
+        if (empty($parent = $cell->getParent())) {
+            return $distance = 1;
+        }
+        $chemin[] = $parent;
+
+        while ($parent !== null) {
+            $parent = $parent->getParent();
+            if(!empty($parent)) {
+                $chemin[] = $parent;
+            }
+        }
+        return (count($chemin) -1) <= 0 ? 1 : count($chemin) -1;
+
+    }
 }
 
 
@@ -151,6 +472,7 @@ class Cell
      * @var string $color Blanc non visité, gris visité une seule fois, noir visité
      */
     public  $color = 'WHITE';
+    public $colorAs = "WHITE";
     public  $prevResource;
     /**
      * @var array
@@ -176,9 +498,29 @@ class Cell
     public $parent;
 
     /**
+     * @var Cell|null $parentAs parent pour l'algo A-Star
+     */
+    public $parentAs;
+
+    /**
      * @var Cell[] $chilrens
      */
     public $chilrens;
+
+    /**
+     * @var float|int $g_cost
+     */
+    public $g_cost;
+
+    /**
+     * @var float|int $h_cost
+     */
+    public $h_cost;
+
+    /**
+     * @var float|int $f_cost
+     */
+    public $f_cost;
 
     /**
      * @param int $index
@@ -199,6 +541,10 @@ class Cell
         $this->isFriendBase = $isFriendBase;
         $this->isEnnemyBase = $isEnnemyBase;
         $this->originalResources = $resources;
+        $this->g_cost = 0;
+        $this->h_cost = 0;
+        $this->f_cost = 0;
+        $this->childrens = [];
     }
 
     /**
@@ -240,10 +586,26 @@ class Cell
     }
 
     /**
+     * @return Cell|null
+     */
+    public function getParentAs() : ?Cell {
+        return $this->parentAs;
+    }
+
+    /**
+     * @param Cell $parent
+     * @return $this
+     */
+    public function setParentAs(Cell $parent) : self {
+        $this->parentAs = $parent;
+        return $this;
+    }
+
+    /**
      * @return Cell[]
      */
     public function getChildren() : array {
-        return $this->chilrens;
+        return $this->chilrens ?? [];
     }
 
     /**
@@ -363,9 +725,21 @@ class ListAction
      */
     public $actions;
 
+    /**
+     * @var int $countAntCells
+     */
+    public $countAntCells;
+
+    /**
+     * @var int $countCrisCells
+     */
+    public $countCrisCells;
+
     public function __construct()
     {
         $this->actions = [];
+        $this->countAntCells = 0;
+        $this->countCrisCells = 0;
     }
 
     /**
@@ -373,6 +747,15 @@ class ListAction
      * @return $this
      */
     public function add(Action $action) : self {
+        /** @var Line $action */
+        if ($action->type == 1) {
+            $this->countAntCells += 1;
+        }
+
+        if ($action->type == 2) {
+            $this->countCrisCells +=1;
+        }
+
         $this->actions[$action->destination] = $action;
         return $this;
     }
@@ -474,6 +857,156 @@ class ListAction
 
 
 
+class Road
+{
+    /**
+     * @var Cell $origine cellule origine
+     */
+    public $origine;
+
+    /**
+     * @var Cell $destination cellule destination
+     */
+    public $destination;
+
+    /**
+     * @var Cell[] $list
+     */
+    protected $list;
+
+    /**
+     * @var int $distance
+     */
+    public $distance;
+
+    /**
+     * @var int resources
+     */
+    public $resources;
+
+    /**
+     * @param Cell $start
+     * @param Cell $end
+     * @return self
+     */
+    public function build(Cell $start, Cell $end) : self {
+        $this->list = [];
+        $this->origine = $start;
+        $this->destination = $end;
+        $this->resources = 0;
+
+        $cellActuel = $end;
+        $this->resources += $end->resources;
+
+        while ($cellActuel !== $start) {
+            $this->list[] = $cellActuel;
+            $cellActuel = $cellActuel->getParentAs();
+            $this->resources += $cellActuel->resources;
+        }
+        $this->list[] = $start;
+
+        $this->list = array_reverse($this->list);
+        $this->distance = (count($this->list) -1) <= 0 ? 1 : count($this->list) -1;
+        return $this;
+    }
+
+    /**
+     * @return Cell[]
+     */
+    public function getList() : array {
+        return $this->list;
+    }
+
+    public function outputAction() : string {
+        $return = '';
+        foreach ($this->list as $cell) {
+            $return .="BEACON $cell->index 1;";
+        }
+        return $return;
+    }
+}
+
+
+
+
+
+
+
+
+
+class Helper
+{
+    public function evaluateRoads(Graph $graph, ListAction $listAction,Cell $myBase, array &$listCell) : array
+    {
+
+        $road = $graph->aStart($myBase, $listCell[5]);
+
+        echo error_log(var_export($road->destination->index,true));
+        die();
+    }
+
+
+    public function evaluateRoad(Graph $graph, ListAction $listAction, Cell $myBase, array &$listCell, array &$roads) : void {
+        $roadToEvaluate = [];
+
+        $resources = 0;
+        /**
+         * @var  int $key index cell
+         * @var Line  $line
+         */
+        foreach ($listAction->actions as $key => $line) {
+
+            $this->getRoads($graph, $myBase, $listCell[$line->destination], $roadToEvaluate, $roads);
+        }
+    }
+
+    /**
+     * @param Graph $graph
+     * @param Cell $myBase
+     * @param Cell $destination
+     * @param array $roadToEvaluate
+     * @param array $roads
+     * @param $roadSelected
+     * @return array
+     */
+    public function getRoads(Graph $graph, Cell $myBase,Cell $destination, array $roadToEvaluate, array &$roads): array
+    {
+        /** @var Road|null $roadSelected */
+        $roadSelected = null;
+
+        if (!empty($roadFromMyBase = $graph->aStart($myBase, $destination))) {
+            $roadToEvaluate[] = $roadFromMyBase;
+
+            /** @var Road $road */
+            foreach ($roads as $road) {
+                $roadToEvaluate[] = $graph->aStart($road->destination, $destination);
+            }
+
+            /** @var Road $road */
+            foreach ($roadToEvaluate as $road) {
+
+                if ($roadSelected === null) {
+                    $roadSelected = $roads;
+                }
+
+                if ($road->resources > $roadSelected->resources) {
+                    $roadSelected = $road;
+                }
+            }
+            $roads[] = $roadSelected;
+        }
+        return $roads;
+    }
+
+
+}
+
+
+
+
+
+
+
 
 
 
@@ -530,8 +1063,20 @@ $graph = new Graph($myBase);
 $graph->setStackCells($listCells);
 $graph->parcoursEnLargeur($myBase);
 
-// trie des actions des plus proche au plus court
+// trie des actions des plus proche au plus loin
 $graph->listAction->sortByDistance();
+
+/**
+ * graph prim
+ */
+
+$graphPrime = new GraphPrim($listCells);
+$graphPrime->prim($myBase);
+$roads = [];
+/** @var Line $action */
+foreach ($graph->listAction->actions as $action) {
+    $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+}
 
 $loop = 0;
 // game loop
@@ -559,20 +1104,52 @@ while (TRUE)
             $graph->listAction->remove($cell->index);
         }
 
+        /**
+         * @todo checker si il y a des actions vers des cellules oeufs sinon passer en MODE_RESOURCES
+         * @todo créer un service qui supprime les actions vers les cellules oeufs  à partir d'un certains nombre de fourmis
+         * @todo mettre en place un recherche du chemin le plus court a partir d'un première ressource vers les autres ressources
+         * @todo Mettre en place les calculs pour les puissances sur les beacon en fonction des distances, du nombre de départ de fourmis
+         * @todo si les cellules oeufs sont proche mettre un poids ford, si dans les trois plus proche resources il n'y a que des oeufs
+         * @todo placer le poids des beacon à 1 lors des actions LINE -> puis utiliser les actions BEACON pour setter le bon poids
+         */
+
         $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
-        $limit = ($antTotal >= (2 * $startAnt ))? 3: $limit;
-        $limit = ($antTotal >= (3 * $startAnt ))? 4: $limit;
         $graph->listAction->update($cell,$mode);
 
     }
     $loop += 1;
+
+    $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
+    $mode = ($antTotal >= (4 * $startAnt ))? 'MODE_FULL_CRISTAUX' : $mode;
+
+    if ($loop > 1) {
+        $graphPrime = new GraphPrim($listCells);
+        $graphPrime->setModeResource($mode);
+        $graphPrime->prim($myBase);
+        $roads = [];
+        /** @var Line $action */
+        foreach ($graph->listAction->actions as $action) {
+            $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+        }
+
+    }
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
     //echo($graph->listAction->chemins());
-    echo($graph->listAction->outPut($limit));
+   // echo($graph->listAction->outPut($limit) ?? 'MESSAGE EMPTY');
 
+    $output = "";
+    foreach ($roads as $road) {
+        foreach ($road as $key => $index) {
+            $weight = $graphPrime->evaluateWeightByCell($index);
+            $output .= "BEACON $index $weight;";
+        }
+    }
+    $output .= "MESSAGE loop N° $loop; MESSAGE mode $mode\n";
+
+    echo($output);
 }
 
 /**
