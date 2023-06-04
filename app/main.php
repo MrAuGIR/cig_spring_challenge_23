@@ -2,22 +2,33 @@
 
 namespace App;
 
+use App\Graph\Graph;
+use App\Graph\GraphPrim;
 use App\Model\Cell;
-use App\Model\Graph;
+use App\Model\Line;
+use App\Model\ListAction;
+use App\Service\Helper;
 
 /**
  * Auto-generated code below aims at helping you parse
  * the standard input according to the problem statement.
  **/
-/** @var Cell[] */
- $listCells = [];
+/** @var Cell[] $listCells */
+$listCells = [];
 
- $actions = "";
 
  /**
   * @var null|Cell $myBase
   */
  $myBase = null;
+
+ /**
+ * @var int $limit nombre d'action au départ
+ */
+ $limit = 2;
+
+ $antTotal = 0;
+ $startAnt = 0;
 
 // $numberOfCells: amount of hexagonal cells in this map
 fscanf(STDIN, "%d", $numberOfCells);
@@ -44,9 +55,29 @@ for ($i = 0; $i < $numberOfBases; $i++)
     $oppBaseIndex = intval($inputs[$i]);
     $listCells[$oppBaseIndex]->isEnnemyBase = true;
 }
+/**
+ * Nouveau graph
+ */
+$graph = new Graph($myBase);
+$graph->setStackCells($listCells);
+$graph->parcoursEnLargeur($myBase);
 
-parcoure($myBase,$actions,$listCells,$myBase->index);
+// trie des actions des plus proche au plus loin
+$graph->listAction->sortByDistance();
 
+/**
+ * graph prim
+ */
+
+$graphPrime = new GraphPrim($listCells);
+$graphPrime->prim($myBase);
+$roads = [];
+/** @var Line $action */
+foreach ($graph->listAction->actions as $action) {
+    $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+}
+
+$loop = 0;
 // game loop
 while (TRUE)
 {
@@ -58,50 +89,62 @@ while (TRUE)
         fscanf(STDIN, "%d %d %d", $resources, $myAnts, $oppAnts);
         $cell = $listCells[$i];
         $cell->myAnts = $myAnts;
-        $cell->resources = $resources;
+        $cell->updateResource($resources);
         $cell->oppAnts = $oppAnts;
+
+        if ($loop == 0 && $myBase->index == $i) {
+            $startAnt = $myAnts;
+            $antTotal = $startAnt;
+        } elseif ($myBase->index == $i && $loop !== 0) {
+            $antTotal += $myAnts;
+        }
+
+        if ($cell->isEmpty) {
+            $graph->listAction->remove($cell->index);
+        }
+
+        $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
+        $graph->listAction->update($cell,$mode);
+
+    }
+    $loop += 1;
+
+    $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
+    $mode = ($antTotal >= (4 * $startAnt ))? 'MODE_FULL_CRISTAUX' : $mode;
+
+    if ($loop > 1) {
+        $graphPrime = new GraphPrim($listCells);
+        $graphPrime->setModeResource($mode);
+        $graphPrime->prim($myBase);
+        $roads = [];
+        /** @var Line $action */
+        foreach ($graph->listAction->actions as $action) {
+            $roads[] = $graphPrime->buildRoad($myBase->index,$action->destination);
+        }
+
     }
     // Write an action using echo(). DON'T FORGET THE TRAILING \n
     // To debug: error_log(var_export($var, true)); (equivalent to var_dump)
     // WAIT | LINE <sourceIdx> <targetIdx> <strength> | BEACON <cellIdx> <strength> | MESSAGE <text>
     
-   
-    echo($actions."\n");
-}
+    //echo($graph->listAction->chemins());
+   // echo($graph->listAction->outPut($limit) ?? 'MESSAGE EMPTY');
 
-
-function parcoure(Cell $cell, string &$actions, array $listCells,$originIndex) {
-
-
-    foreach ($cell->neightboors as $key => $neighIndex) {
-        if ($neighIndex <= 0 ) {
-            continue;
-        }
-
-        $neigh = $listCells[$neighIndex];
-
-        if ($neigh->color !== "WHITE") {
-            continue;
-        }
-
-        if ($neigh->resources > 0) {
-            $actions .= "LINE $originIndex $neigh->index 1;";
-        }
-
-        $neigh->color = "GRIS";
-
-        if (!empty($neigh->neightboors)) {
-            parcoure($neigh,$actions,$listCells,$originIndex);
+    $output = "";
+    foreach ($roads as $road) {
+        foreach ($road as $key => $index) {
+            $weight = $graphPrime->evaluateWeightByCell($index);
+            $output .= "BEACON $index $weight;";
         }
     }
+    $output .= "MESSAGE loop N° $loop; MESSAGE mode $mode\n";
 
+    echo($output);
 }
 
 /**
- * @param string|array|int|object
+ * @param string|array|int|object $data
  */
 function displayLog($data) : void {
     echo error_log(var_export($data,true));
 }
-
-?>
