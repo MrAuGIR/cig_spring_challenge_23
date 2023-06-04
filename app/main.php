@@ -103,15 +103,6 @@ while (TRUE)
             $graph->listAction->remove($cell->index);
         }
 
-        /**
-         * @todo checker si il y a des actions vers des cellules oeufs sinon passer en MODE_RESOURCES
-         * @todo créer un service qui supprime les actions vers les cellules oeufs  à partir d'un certains nombre de fourmis
-         * @todo mettre en place un recherche du chemin le plus court a partir d'un première ressource vers les autres ressources
-         * @todo Mettre en place les calculs pour les puissances sur les beacon en fonction des distances, du nombre de départ de fourmis
-         * @todo si les cellules oeufs sont proche mettre un poids ford, si dans les trois plus proche resources il n'y a que des oeufs
-         * @todo placer le poids des beacon à 1 lors des actions LINE -> puis utiliser les actions BEACON pour setter le bon poids
-         */
-
         $mode = ($antTotal >= (3 * $startAnt ))? 'MODE_RESOURCES' : 'INIT';
         $graph->listAction->update($cell,$mode);
 
